@@ -27,16 +27,16 @@ class CronParser(object):
         
         self.rules = defaultdict(list)
         self.exceptions = defaultdict(list)
-        self.holiday_exceptions = defaultdict(list)  #Optimization to reduce the effect of one day exceptions on the runtime
+        self.holiday_exceptions = {}  #Optimization to reduce the effect of one day exceptions on the runtime
+                                      #  Looks like {(dd,mm,yyyy): name}  
 
         for rname, rule in rules:
-            #Two rule definitions for same name will be merged
             self.rules[rname].append(self.parse(rule))
 
         for ename, exception in exceptions:
-            #Two exception definitions for same name will be merged
+            #Holidays can be queried faster than more general rules
             if self.is_holiday(exception):
-                self.holiday_exceptions[ename].append(self.parse(exception))
+                self.holiday_exceptions[self.holiday_tuple(exception)] = ename
             else:
                 self.exceptions[ename].append(self.parse(exception))
 
@@ -51,7 +51,6 @@ class CronParser(object):
         return {f: r1.get(f, set()) - r2.get(f, set()) for f in CronParser.fields}
                 
 
-        
 
     def parse_field(self, f, minimum=0, maximum=0):
         """
@@ -181,7 +180,13 @@ class CronParser(object):
 
         rule_list = []
 
-        #Check exceptions first
+        #Check holiday exceptions:
+        holiday_exc_name = self.holiday_exceptions.get((time_obj.day, time_obj.month, time_obj.year), None)
+
+        if holiday_exc_name is not None:
+            return [holiday_exc_name]
+
+        #Check exceptions
         for ename, exceptions in self.exceptions.items():
             for exception in exceptions:
                 if self.check_ruleset(exception, time_obj):
@@ -215,7 +220,7 @@ def test_parse():
     cp = CronParser()
     print cp.parse("* 7-19 * * 1-5 * ")
 
-def test_holiday_parse():
+def test_is_holiday():
     cp = CronParser()
     print cp.is_holiday("* * * * * *")
     print cp.is_holiday("* * 12 25 * *")
@@ -226,26 +231,84 @@ def test_holiday_parse():
     print cp.holiday_tuple("* * 4 7 * 2015")
 
 
+def test_holiday_rules():
+    rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
+    exceptions = [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
+
+    for m in xrange(1,12):
+        exceptions.append(("closed", "* * 1 %s * 2014" % m))
+
+    cp = CronParser(rules, exceptions)
+
+    print "Weekday:", cp.pick_rules(datetime(2014,12,19,12,0))
+    print "Weekday Night:", cp.pick_rules(datetime(2014,12,19,21,30))
+    print "Weekend:", cp.pick_rules(datetime(2014,12,20,9,30))
+    print "Weekend Night:", cp.pick_rules(datetime(2014,12,20,17,30))
+    print "First of March:", cp.pick_rules(datetime(2014,3,1,12,0))
+
+
 
 def test_pick_rules():
     cp = CronParser(
         [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")],
-        [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"),
-         ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
+        [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
     )
 
+
+    print "Weekday:", cp.pick_rules(datetime(2014,12,19,12,0))
+    print "Weekday Night:", cp.pick_rules(datetime(2014,12,19,21,30))
+    print "Weekend:", cp.pick_rules(datetime(2014,12,20,8,30))
+    print "Weekend Night:", cp.pick_rules(datetime(2014,12,20,17,30))
+    print "Christmas:", cp.pick_rules(datetime(2014,12,25,12,0))
+
+
+
+def benchmark():
     import time
+
+    rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
+    exceptions = [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
+
+    #Add Holidays
+    for d in xrange(1,31, 2):
+        for m in xrange(1,12):
+            for y in xrange(2000,2020):
+                exceptions.append(("closed", "* * %s %s * %s" % (d,m,y)))
+
+    print "Rules: {}".format(len(exceptions)+len(rules))
     start = time.time()
+    
+    cp = CronParser(rules, exceptions)
 
-    for d in xrange(1,12):
-        for h in xrange(0,24):
-            cp.pick_rules(datetime(2014,12,d,h,0))
+    print "Time to build CronParser: {:>19f}s".format(time.time() - start)
+    
+    start = time.time()
+    i = 0
+    for y in xrange(2014,2015):
+        for m in xrange(1,13):
+            for d in xrange(1,28):
+                for h in xrange(0,24):
+                        i+=1
+                        day = datetime(y,m,d,h,0)
 
-    print  time.time() - start
-    print len(cp.exceptions['closed'])
-    print "Christmas", cp.pick_rules(datetime(2014,12,25,8,0))
+    delta_dtos = time.time() - start
+    print "Time to build {} datetime objects: {:f}s".format(i, delta_dtos)
+
+
+    start = time.time()
+    i = 0
+    for y in xrange(2014,2015):
+        for m in xrange(1,13):
+            for d in xrange(1,28):
+                for h in xrange(0,24):
+                        i+=1
+                        cp.pick_rules(datetime(y,m,d,h,0))
+
+    delta_pick_rules = time.time() - start
+    print "Time to run {} rule checks: {:>15f}s".format(i, delta_pick_rules)
+    print "Difference: {:>33f}s".format(delta_pick_rules - delta_dtos)
 
 
 
 if __name__ == "__main__":
-    test_holiday_parse()
+    benchmark()
