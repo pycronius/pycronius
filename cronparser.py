@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import *
+import re
 
 
 
@@ -16,14 +17,17 @@ class CronParser(object):
         allows "*", "-", "/", and "[0-9]"
     """
     fields = ["minute", "hour", "dom", "moy", "dow", "year"]
+    holiday_re = "[\*]\s[\*]\s(\d{1,2})\s(\d{1,2})\s[\*]\s(\d{4})"
 
-    def __init__(self, rules, exceptions=list(), in_utc=False):
+    def __init__(self, rules=list(), exceptions=list(), in_utc=False):
         """
-            rules and 
+            rules and exeptions should look like:
+            [("name", "* * * * * *"), ...]
         """
         
         self.rules = defaultdict(list)
         self.exceptions = defaultdict(list)
+        self.holiday_exceptions = defaultdict(list)  #Optimization to reduce the effect of one day exceptions on the runtime
 
         for rname, rule in rules:
             #Two rule definitions for same name will be merged
@@ -31,20 +35,11 @@ class CronParser(object):
 
         for ename, exception in exceptions:
             #Two exception definitions for same name will be merged
-            self.exceptions[ename].append(self.parse(exception))
+            if self.is_holiday(exception):
+                self.holiday_exceptions[ename].append(self.parse(exception))
+            else:
+                self.exceptions[ename].append(self.parse(exception))
 
-        # self.apply_exceptions();
-
-
-
-    #Can't do this!  Think about case where we merge holidays e.g. "* * 25 12 * *" and "* * 1 1 * *", then we match december 1st and january 25th too
-    def merge_rules(self, r1, r2):
-        """
-            merge rulesets (union)
-
-            Can handle an empty dictionary as a ruleset
-        """
-        return {f: r1.get(f, set()).union( r2.get(f, set()) ) for f in CronParser.fields}
 
 
     def diff_rules(self, r1, r2):
@@ -54,22 +49,9 @@ class CronParser(object):
             Can handle an empty dictionary as a ruleset
         """
         return {f: r1.get(f, set()) - r2.get(f, set()) for f in CronParser.fields}
-
-
-    # def apply_exceptions(self):
-    #     for ename, exc in self.exceptions.items():
-            
-    #         for rname, rule in self.rules.items():
                 
-    #             #Add exceptions to the same-named rule set
-    #             if ename == rname:
-    #                 self.rules[rname] = self.merge_rules(rule, exc)
-                
-    #             #Remove exceptions from other rule sets
-    #             else:
-    #                 self.rules[rname] = self.diff_rules(rule, exc)
 
-                
+        
 
     def parse_field(self, f, minimum=0, maximum=0):
         """
@@ -133,6 +115,23 @@ class CronParser(object):
             "dow": self.parse_field(fields[4], 1, 7),
             "year": self.parse_field(fields[5], 2000, 2025)  #What is a sensible year here?  EOT?
         }
+    
+
+    def is_holiday(self, rule):
+        """
+            Holiday is defined as one day, one month, one year:
+
+            e.g. Easter: "* * 5 4 * 2015"
+        """
+        return re.compile(CronParser.holiday_re).match(rule.strip()) is not None
+
+
+    def holiday_tuple(self, hrule):
+        """
+            assumes hrule is a holiday
+            returns tuple: (dd, mm, yyyy)
+        """
+        return tuple([ int(d) for d in re.findall(CronParser.holiday_re, hrule.strip())[0] ])
 
 
     def check_ruleset(self, ruleset, time_obj):
@@ -153,7 +152,7 @@ class CronParser(object):
         
         if time_obj.isoweekday() not in ruleset["dow"]:
             return False
-        
+
         if time_obj.hour not in ruleset["hours"]:
             return False
 
@@ -216,193 +215,23 @@ def test_parse():
     cp = CronParser()
     print cp.parse("* 7-19 * * 1-5 * ")
 
+def test_holiday_parse():
+    cp = CronParser()
+    print cp.is_holiday("* * * * * *")
+    print cp.is_holiday("* * 12 25 * *")
+    print cp.is_holiday("* * 4 7 * 2015")
+    print cp.is_holiday("* * 4-6 7 * 2015")
+    print cp.is_holiday("*/2 * 4 7 * 2015")
+
+    print cp.holiday_tuple("* * 4 7 * 2015")
+
+
 
 def test_pick_rules():
     cp = CronParser(
         [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")],
         [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"),
-         ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *"), 
-         ("closed", "* * 31 12 * 2001"),
-         ("closed", "* * 31 12 * 2002"),
-         ("closed", "* * 31 12 * 2003"),
-         ("closed", "* * 31 12 * 2004"),
-         ("closed", "* * 31 12 * 2005"),
-         ("closed", "* * 31 12 * 2006"),
-         ("closed", "* * 31 12 * 2007"),
-         ("closed", "* * 31 12 * 2008"),
-         ("closed", "* * 31 12 * 2009"),
-         ("closed", "* * 31 12 * 2010"),
-         ("closed", "* * 31 12 * 2011"),
-         ("closed", "* * 31 12 * 2012"),
-         ("closed", "* * 31 12 * 2013"),
-         ("closed", "* * 31 12 * 2014"),
-         ("closed", "* * 31 12 * 2015"),
-         ("closed", "* * 31 11 * 2001"),
-         ("closed", "* * 31 11 * 2002"),
-         ("closed", "* * 31 11 * 2003"),
-         ("closed", "* * 31 11 * 2004"),
-         ("closed", "* * 31 11 * 2005"),
-         ("closed", "* * 31 11 * 2006"),
-         ("closed", "* * 31 11 * 2007"),
-         ("closed", "* * 31 11 * 2008"),
-         ("closed", "* * 31 11 * 2009"),
-         ("closed", "* * 31 11 * 2010"),
-         ("closed", "* * 31 11 * 2011"),
-         ("closed", "* * 31 11 * 2012"),
-         ("closed", "* * 31 11 * 2013"),
-         ("closed", "* * 31 11 * 2014"),
-         ("closed", "* * 31 11 * 2015"),
-         ("closed", "* * 31 10 * 2001"),
-         ("closed", "* * 31 10 * 2002"),
-         ("closed", "* * 31 10 * 2003"),
-         ("closed", "* * 31 10 * 2004"),
-         ("closed", "* * 31 10 * 2005"),
-         ("closed", "* * 31 10 * 2006"),
-         ("closed", "* * 31 10 * 2007"),
-         ("closed", "* * 31 10 * 2008"),
-         ("closed", "* * 31 10 * 2009"),
-         ("closed", "* * 31 10 * 2010"),
-         ("closed", "* * 31 10 * 2011"),
-         ("closed", "* * 31 10 * 2012"),
-         ("closed", "* * 31 10 * 2013"),
-         ("closed", "* * 31 10 * 2014"),
-         ("closed", "* * 31 10 * 2015"),
-         ("closed", "* * 31 9 * 2001"),
-         ("closed", "* * 31 9 * 2002"),
-         ("closed", "* * 31 9 * 2003"),
-         ("closed", "* * 31 9 * 2004"),
-         ("closed", "* * 31 9 * 2005"),
-         ("closed", "* * 31 9 * 2006"),
-         ("closed", "* * 31 9 * 2007"),
-         ("closed", "* * 31 9 * 2008"),
-         ("closed", "* * 31 9 * 2009"),
-         ("closed", "* * 31 9 * 2010"),
-         ("closed", "* * 31 9 * 2011"),
-         ("closed", "* * 31 9 * 2012"),
-         ("closed", "* * 31 9 * 2013"),
-         ("closed", "* * 31 9 * 2014"),
-         ("closed", "* * 31 9 * 2015"),
-         ("closed", "* * 31 8 * 2001"),
-         ("closed", "* * 31 8 * 2002"),
-         ("closed", "* * 31 8 * 2003"),
-         ("closed", "* * 31 8 * 2004"),
-         ("closed", "* * 31 8 * 2005"),
-         ("closed", "* * 31 8 * 2006"),
-         ("closed", "* * 31 8 * 2007"),
-         ("closed", "* * 31 8 * 2008"),
-         ("closed", "* * 31 8 * 2009"),
-         ("closed", "* * 31 8 * 2010"),
-         ("closed", "* * 31 8 * 2011"),
-         ("closed", "* * 31 8 * 2012"),
-         ("closed", "* * 31 8 * 2013"),
-         ("closed", "* * 31 8 * 2014"),
-         ("closed", "* * 31 8 * 2015"),
-         ("closed", "* * 31 7 * 2001"),
-         ("closed", "* * 31 7 * 2002"),
-         ("closed", "* * 31 7 * 2003"),
-         ("closed", "* * 31 7 * 2004"),
-         ("closed", "* * 31 7 * 2005"),
-         ("closed", "* * 31 7 * 2006"),
-         ("closed", "* * 31 7 * 2007"),
-         ("closed", "* * 31 7 * 2008"),
-         ("closed", "* * 31 7 * 2009"),
-         ("closed", "* * 31 7 * 2010"),
-         ("closed", "* * 31 7 * 2011"),
-         ("closed", "* * 31 7 * 2012"),
-         ("closed", "* * 31 7 * 2013"),
-         ("closed", "* * 31 7 * 2014"),
-         ("closed", "* * 31 7 * 2015"),
-         ("closed", "* * 31 6 * 2001"),
-         ("closed", "* * 31 6 * 2002"),
-         ("closed", "* * 31 6 * 2003"),
-         ("closed", "* * 31 6 * 2004"),
-         ("closed", "* * 31 6 * 2005"),
-         ("closed", "* * 31 6 * 2006"),
-         ("closed", "* * 31 6 * 2007"),
-         ("closed", "* * 31 6 * 2008"),
-         ("closed", "* * 31 6 * 2009"),
-         ("closed", "* * 31 6 * 2010"),
-         ("closed", "* * 31 6 * 2011"),
-         ("closed", "* * 31 6 * 2012"),
-         ("closed", "* * 31 6 * 2013"),
-         ("closed", "* * 31 6 * 2014"),
-         ("closed", "* * 31 6 * 2015"),
-         ("closed", "* * 31 5 * 2001"),
-         ("closed", "* * 31 5 * 2002"),
-         ("closed", "* * 31 5 * 2003"),
-         ("closed", "* * 31 5 * 2004"),
-         ("closed", "* * 31 5 * 2005"),
-         ("closed", "* * 31 5 * 2006"),
-         ("closed", "* * 31 5 * 2007"),
-         ("closed", "* * 31 5 * 2008"),
-         ("closed", "* * 31 5 * 2009"),
-         ("closed", "* * 31 5 * 2010"),
-         ("closed", "* * 31 5 * 2011"),
-         ("closed", "* * 31 5 * 2012"),
-         ("closed", "* * 31 5 * 2013"),
-         ("closed", "* * 31 5 * 2014"),
-         ("closed", "* * 31 5 * 2015"),
-         ("closed", "* * 31 4 * 2001"),
-         ("closed", "* * 31 4 * 2002"),
-         ("closed", "* * 31 4 * 2003"),
-         ("closed", "* * 31 4 * 2004"),
-         ("closed", "* * 31 4 * 2005"),
-         ("closed", "* * 31 4 * 2006"),
-         ("closed", "* * 31 4 * 2007"),
-         ("closed", "* * 31 4 * 2008"),
-         ("closed", "* * 31 4 * 2009"),
-         ("closed", "* * 31 4 * 2010"),
-         ("closed", "* * 31 4 * 2011"),
-         ("closed", "* * 31 4 * 2012"),
-         ("closed", "* * 31 4 * 2013"),
-         ("closed", "* * 31 4 * 2014"),
-         ("closed", "* * 31 4 * 2015"),
-         ("closed", "* * 31 3 * 2001"),
-         ("closed", "* * 31 3 * 2002"),
-         ("closed", "* * 31 3 * 2003"),
-         ("closed", "* * 31 3 * 2004"),
-         ("closed", "* * 31 3 * 2005"),
-         ("closed", "* * 31 3 * 2006"),
-         ("closed", "* * 31 3 * 2007"),
-         ("closed", "* * 31 3 * 2008"),
-         ("closed", "* * 31 3 * 2009"),
-         ("closed", "* * 31 3 * 2010"),
-         ("closed", "* * 31 3 * 2011"),
-         ("closed", "* * 31 3 * 2012"),
-         ("closed", "* * 31 3 * 2013"),
-         ("closed", "* * 31 3 * 2014"),
-         ("closed", "* * 31 3 * 2015"),
-         ("closed", "* * 31 2 * 2001"),
-         ("closed", "* * 31 2 * 2002"),
-         ("closed", "* * 31 2 * 2003"),
-         ("closed", "* * 31 2 * 2004"),
-         ("closed", "* * 31 2 * 2005"),
-         ("closed", "* * 31 2 * 2006"),
-         ("closed", "* * 31 2 * 2007"),
-         ("closed", "* * 31 2 * 2008"),
-         ("closed", "* * 31 2 * 2009"),
-         ("closed", "* * 31 2 * 2010"),
-         ("closed", "* * 31 2 * 2011"),
-         ("closed", "* * 31 2 * 2012"),
-         ("closed", "* * 31 2 * 2013"),
-         ("closed", "* * 31 2 * 2014"),
-         ("closed", "* * 31 2 * 2015"),
-         ("closed", "* * 31 1 * 2001"),
-         ("closed", "* * 31 1 * 2002"),
-         ("closed", "* * 31 1 * 2003"),
-         ("closed", "* * 31 1 * 2004"),
-         ("closed", "* * 31 1 * 2005"),
-         ("closed", "* * 31 1 * 2006"),
-         ("closed", "* * 31 1 * 2007"),
-         ("closed", "* * 31 1 * 2008"),
-         ("closed", "* * 31 1 * 2009"),
-         ("closed", "* * 31 1 * 2010"),
-         ("closed", "* * 31 1 * 2011"),
-         ("closed", "* * 31 1 * 2012"),
-         ("closed", "* * 31 1 * 2013"),
-         ("closed", "* * 31 1 * 2014"),
-         ("closed", "* * 31 1 * 2015"),
-         ]
+         ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
     )
 
     import time
@@ -419,4 +248,4 @@ def test_pick_rules():
 
 
 if __name__ == "__main__":
-    test_pick_rules()
+    test_holiday_parse()
