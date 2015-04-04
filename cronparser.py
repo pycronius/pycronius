@@ -3,6 +3,10 @@ from datetime import *
 import re
 
 
+#TODO: refactor ruleset, string parser into own classes
+#TODO: rename moy -> month
+#TODO: option to set min/max year
+
 
 class InvalidFieldError(Exception):
     pass
@@ -202,113 +206,3 @@ class CronParser(object):
 
 
 
-def test_parse_field():
-    cp = CronParser()
-    strs = {
-        "5": {5},
-        "2-9": set(xrange(2,10)),
-        "20-30": set(xrange(20,31)), 
-        "20-30/2": set(xrange(20,31,2)), 
-        "*": set(xrange(0,60)),
-        "*/3": set(xrange(0,60,3))
-    }
-    for f, v in strs.items():
-        print f, cp.parse_field(f, 0, 59), cp.parse_field(f, 0, 59) == v
-
-
-def test_parse():
-    cp = CronParser()
-    print cp.parse("* 7-19 * * 1-5 * ")
-
-def test_is_holiday():
-    cp = CronParser()
-    print cp.is_holiday("* * * * * *")
-    print cp.is_holiday("* * 12 25 * *")
-    print cp.is_holiday("* * 4 7 * 2015")
-    print cp.is_holiday("* * 4-6 7 * 2015")
-    print cp.is_holiday("*/2 * 4 7 * 2015")
-
-    print cp.holiday_tuple("* * 4 7 * 2015")
-
-
-def test_holiday_rules():
-    rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
-    exceptions = [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
-
-    for m in xrange(1,12):
-        exceptions.append(("closed", "* * 1 %s * 2014" % m))
-
-    cp = CronParser(rules, exceptions)
-
-    print "Weekday:", cp.pick_rules(datetime(2014,12,19,12,0))
-    print "Weekday Night:", cp.pick_rules(datetime(2014,12,19,21,30))
-    print "Weekend:", cp.pick_rules(datetime(2014,12,20,9,30))
-    print "Weekend Night:", cp.pick_rules(datetime(2014,12,20,17,30))
-    print "First of March:", cp.pick_rules(datetime(2014,3,1,12,0))
-
-
-
-def test_pick_rules():
-    cp = CronParser(
-        [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")],
-        [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
-    )
-
-
-    print "Weekday:", cp.pick_rules(datetime(2014,12,19,12,0))
-    print "Weekday Night:", cp.pick_rules(datetime(2014,12,19,21,30))
-    print "Weekend:", cp.pick_rules(datetime(2014,12,20,8,30))
-    print "Weekend Night:", cp.pick_rules(datetime(2014,12,20,17,30))
-    print "Christmas:", cp.pick_rules(datetime(2014,12,25,12,0))
-
-
-
-def benchmark():
-    import time
-
-    rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
-    exceptions = [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
-
-    #Add Holidays
-    for d in xrange(1,31, 2):
-        for m in xrange(1,12):
-            for y in xrange(2000,2020):
-                exceptions.append(("closed", "* * %s %s * %s" % (d,m,y)))
-
-    print "Rules: {}".format(len(exceptions)+len(rules))
-    start = time.time()
-    
-    cp = CronParser(rules, exceptions)
-
-    print "Time to build CronParser: {:>19f}s".format(time.time() - start)
-    
-    start = time.time()
-    i = 0
-    for y in xrange(2014,2015):
-        for m in xrange(1,13):
-            for d in xrange(1,28):
-                for h in xrange(0,24):
-                        i+=1
-                        day = datetime(y,m,d,h,0)
-
-    delta_dtos = time.time() - start
-    print "Time to build {} datetime objects: {:f}s".format(i, delta_dtos)
-
-
-    start = time.time()
-    i = 0
-    for y in xrange(2014,2015):
-        for m in xrange(1,13):
-            for d in xrange(1,28):
-                for h in xrange(0,24):
-                        i+=1
-                        cp.pick_rules(datetime(y,m,d,h,0))
-
-    delta_pick_rules = time.time() - start
-    print "Time to run {} rule checks: {:>15f}s".format(i, delta_pick_rules)
-    print "Difference: {:>33f}s".format(delta_pick_rules - delta_dtos)
-
-
-
-if __name__ == "__main__":
-    benchmark()
