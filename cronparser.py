@@ -4,13 +4,9 @@ import re
 
 from rules import BasicCronRule
 
-#TODO: refactor ruleset, string parser into own classes
 #TODO: rename moy -> month
-#TODO: option to set min/max year
 #TODO: add support for ','
-
-class InvalidFieldError(Exception):
-    pass
+#TODO: More accurate name for CronParser
 
 
 class CronParser(object):

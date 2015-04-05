@@ -1,5 +1,11 @@
 import re
 
+from utils import Bunch
+
+#TODO: add support for start/stop hour/minute range rule
+#TODO: option to set min/max year
+#TODO: add is_valid_rule methods
+
 
 #Optimization for handling wildcards
 class WildCardSet(object):
@@ -7,6 +13,10 @@ class WildCardSet(object):
     # x in WildCardSet() -> True
     def __contains__(self, key):
         return True
+
+
+class InvalidFieldError(Exception):
+    pass
 
 
 class BasicCronRule(object):
@@ -17,7 +27,8 @@ class BasicCronRule(object):
         self.rulesets = self.parse(cron_string)
 
 
-    def parse_field(self, f, minimum=0, maximum=0):
+    @classmethod
+    def parse_field(cls, f, minimum=0, maximum=0):
         """
             Returns a set containing the right elements
             minimum and maximum define the range of values used for wildcards
@@ -68,19 +79,20 @@ class BasicCronRule(object):
             raise InvalidFieldError(f)
 
 
-    def parse(self, cron_string):
+    @classmethod
+    def parse(cls, cron_string):
         """
             Parses a cron_string that looks like "m h dom moy dow year"
             return is a dictionary of sets holding integers contained by that field
         """
         fields = cron_string.split(" ")
         return {
-            "minutes": self.parse_field(fields[0], 0, 59),
-            "hours": self.parse_field(fields[1], 0, 23),
-            "dom": self.parse_field(fields[2], 1, 31),
-            "moy": self.parse_field(fields[3], 1, 12),
-            "dow": self.parse_field(fields[4], 1, 7),
-            "year": self.parse_field(fields[5], 2000, 2025)  #What is a sensible year here?
+            "minutes": cls.parse_field(fields[0], 0, 59),
+            "hours": cls.parse_field(fields[1], 0, 23),
+            "dom": cls.parse_field(fields[2], 1, 31),
+            "moy": cls.parse_field(fields[3], 1, 12),
+            "dow": cls.parse_field(fields[4], 1, 7),
+            "year": cls.parse_field(fields[5], 2000, 2025)  #What is a sensible year here?
         }
 
     @staticmethod
@@ -108,7 +120,6 @@ class BasicCronRule(object):
         """
 
         #If all checks pass, the time_obj belongs to this ruleset
-        #Reverse order to ensure holidays are fast
         if time_obj.year not in self.rulesets["year"]:
             return False
         
@@ -130,5 +141,90 @@ class BasicCronRule(object):
 
         return True
 
+
     def __contains__(self, time_obj):
         return self.contains(time_obj)
+
+
+
+class CronRangeRule(BasicCronRule):
+
+    hhmm_re = "(\d\d):(\d\d)"
+
+    @classmethod
+    def parse_field(cls, f, minimum, maximum):
+        #Try to find HH:MM fields
+        try:
+            hours, minutes = map(int, re.findall(CronRangeRule.hhmm_re, f.strip())[0])
+            return Bunch(hours=hours, minutes=minutes)
+        except:
+            raise InvalidFieldError(f)
+
+        #Otherwise assume nomal cron
+        return super(CronRangeRule, cls).parse_field(f, minimum, maximum)
+
+    @classmethod
+    def parse(cls, cron_string):
+        fields = cron_string.split(" ")
+        return {
+            "start": cls.parse_field(fields[0], 0, 0),
+            "stop": cls.parse_field(fields[1], 0, 0),
+            "dom": cls.parse_field(fields[2], 1, 31),
+            "moy": cls.parse_field(fields[3], 1, 12),
+            "dow": cls.parse_field(fields[4], 1, 7),
+            "year": cls.parse_field(fields[5], 2000, 2025)  #What is a sensible year here?
+        }
+
+
+    def contains(self):
+        """
+            Returns True/False if time_obj is contained in ruleset
+        """
+
+        #If all checks pass, the time_obj belongs to this ruleset
+
+        if time_obj.year not in self.rulesets["year"]:
+            return False
+        
+        if time_obj.month not in self.rulesets["moy"]:
+            return False
+
+        if time_obj.day not in self.rulesets["dom"]:
+            return False
+        
+        if time_obj.isoweekday() not in self.rulesets["dow"]:
+            return False
+
+        #Determine if time_obj is within the time range 
+        if time_obj.hour < self.rulesets["start"].hour or (time_obj.hour == self.rulesets["start"].hour and time_obj.minute < self.rulesets["start"].minute):
+            return False
+
+        if time_obj.hour > self.rulesets["stop"].hour or (time_obj.hour == self.rulesets["stop"].hour and time_obj.minute > self.rulesets["stop"].minute):
+            return False
+
+        return True
+
+
+    @staticmethod
+    def like_range_rule(cron_string):
+        """
+            This class method checks whether or not a cron string looks like "12:34 13:31 ..."
+            It doesn't go through the logic of checking each field.  Parsing is equivalent to validating
+        """
+        fields = cron_string.split(" ")
+        hhmm_re = re.compile(CronRangeRule.hhmm_re)
+        return (hhmm_re.match(fields[0]) is not None) and (hhmm_re.match(fields[1]) is not None)
+
+
+    @staticmethod
+    def is_valid(cron_string):
+        """
+            This class method checks whether or not a cron string looks like "12:34 13:31 * */2 1-5 *"
+            That is, the first two fields are start and stop, and the last 4 are standard cron
+        """
+        try:
+            map(CronRangeRule.parse_field, cron_string.split(" ")[2:7])
+        except:
+            return False
+
+        return CronRangeRule.like_range_rule(cron_string)
