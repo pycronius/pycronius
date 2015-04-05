@@ -2,13 +2,16 @@ from datetime import datetime
 import unittest
 
 from cronparser import CronParser
+from rules import BasicCronRule
 
 
+#TODO: test tz-aware datetime strings
 
-class TestBasicCronParser(unittest.TestCase):
+
+class TestBasicCronRule(unittest.TestCase):
 
     def test_parse_field(self):
-        cp = CronParser()
+        r = BasicCronRule("* * * * * *")
         strs = {
             "5": {5},
             "2-9": set(xrange(2,10)),
@@ -18,31 +21,56 @@ class TestBasicCronParser(unittest.TestCase):
             "*/3": set(xrange(0,60,3))
         }
         for f, v in strs.items():
-            self.assertTrue(cp.parse_field(f, 0, 59), cp.parse_field(f, 0, 59) == v)
+            self.assertTrue(r.parse_field(f, 0, 59) == v)
 
 
     def test_parse(self):
-        cp = CronParser()
-        ruleset = cp.parse("* 7-19 * * 1-5 * ")
+        rule = BasicCronRule("* 7-19 * * 1-5 * ")
 
-        self.assertTrue(ruleset["minutes"] == set(xrange(0,60)))
-        self.assertTrue(ruleset["hours"] == set(xrange(7,20)))
-        self.assertTrue(ruleset["dom"] == set(xrange(1,32)))
-        self.assertTrue(ruleset["moy"] == set(xrange(1,13)))
-        self.assertTrue(ruleset["dow"] == set(xrange(1,6)))
-        self.assertTrue(ruleset["year"] == set(xrange(2000,2026)))
+        self.assertTrue( all([m in rule.rulesets["minutes"] for m in xrange(0,60)]) )
+        self.assertTrue( all([h in rule.rulesets["hours"] for h in xrange(7,20)]) )
+        self.assertTrue( all([d in rule.rulesets["dom"] for d in xrange(1,32)]) )
+        self.assertTrue( all([m in rule.rulesets["moy"] for m in xrange(1,13)]) )
+        self.assertTrue( all([d in rule.rulesets["dow"] for d in xrange(1,6)]) )
+        self.assertTrue( all([y in rule.rulesets["year"] for y in xrange(2000,2021)]) )
 
 
     def test_is_holiday(self):
-        cp = CronParser()
-        self.assertFalse(cp.is_holiday("* * * * * *"))
-        self.assertFalse(cp.is_holiday("* * 12 25 * *"))
-        self.assertTrue(cp.is_holiday("* * 4 7 * 2015"))
-        self.assertFalse(cp.is_holiday("* * 4-6 7 * 2015"))
-        self.assertFalse(cp.is_holiday("*/2 * 4 7 * 2015"))
+        rule = BasicCronRule("* 7-19 * * 1-5 * ")
 
-        self.assertEqual(cp.holiday_tuple("* * 4 7 * 2015"), (4,7,2015))
+        self.assertFalse(rule.is_holiday("* * * * * *"))
+        self.assertFalse(rule.is_holiday("* * 12 25 * *"))
+        self.assertTrue(rule.is_holiday("* * 4 7 * 2015"))
+        self.assertFalse(rule.is_holiday("* * 4-6 7 * 2015"))
+        self.assertFalse(rule.is_holiday("*/2 * 4 7 * 2015"))
 
+        self.assertEqual(rule.holiday_tuple("* * 4 7 * 2015"), (4,7,2015))
+
+
+    def test_contains(self):
+        # Weekday
+        rule = BasicCronRule("* 7-19 * * * *")
+        self.assertTrue(rule.contains(datetime(2014,12,19,12,0)))
+        
+        # Weekday Night
+        rule = BasicCronRule("* 20-23 * * * *")
+        self.assertTrue(rule.contains(datetime(2014,12,19,21,30)))
+
+        # Weekend
+        rule = BasicCronRule("* 0-8 * * 6-7 *")
+        self.assertTrue(rule.contains(datetime(2014,12,20,8,30)))
+        
+        #Weekend Night
+        rule = BasicCronRule("* 17-23 * * 6-7 *")
+        self.assertTrue(rule.contains(datetime(2014,12,20,17,30)))
+        
+        # Christmas (Thursday)
+        rule = BasicCronRule("* * 25 12 * *")
+        self.assertTrue(rule.contains(datetime(2014,12,25,12,0)))
+
+
+class TestBasicCronParser(unittest.TestCase):
+    pass
 
     def test_holiday_rules(self):
         rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
@@ -86,7 +114,7 @@ class TestBasicCronParser(unittest.TestCase):
         # Weekend
         self.assertEqual(cp.pick_rules(datetime(2014,12,20,8,30))[0], "closed")
         
-        #Weekend Night
+        # #Weekend Night
         self.assertEqual(cp.pick_rules(datetime(2014,12,20,17,30))[0], "closed")
         
         # Christmas (Thursday)
@@ -100,8 +128,9 @@ class TestBasicCronParser(unittest.TestCase):
 
 if __name__ == "__main__":
     # suite = unittest.TestSuite()
-    # suite.addTest(TestBasicCronParser('test_pick_rules'))
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestBasicCronParser)
+    # suite.addTest(TestBasicCronRule('test_parse'))
+    # suite = unittest.TestLoader().loadTestsFromTestCase(TestBasicCronParser)
+    suite = unittest.TestLoader().loadTestsFromNames(['tests.TestBasicCronRule', 'tests.TestBasicCronParser'])
     runner = unittest.TextTestRunner()
     runner.run(suite)
     
