@@ -2,7 +2,6 @@ import re
 
 from utils import Bunch
 
-#TODO: add support for start/stop hour/minute range rule
 #TODO: option to set min/max year
 #TODO: add is_valid_rule methods
 
@@ -16,6 +15,9 @@ class WildCardSet(object):
 
 
 class InvalidFieldError(Exception):
+    pass
+
+class InvalidCronStringError(Exception):
     pass
 
 
@@ -46,7 +48,7 @@ class BasicCronRule(object):
             divisor = 1
             div_splits = f.split("/")
 
-            if len(div_splits) > 1 and div_splits[1].isdigit():
+            if len(div_splits) > 1:
                 divisor = int(div_splits[1])
 
             # *, */x
@@ -73,8 +75,8 @@ class BasicCronRule(object):
             #If no rule matches, the string isn't valid
             raise InvalidFieldError(f)
 
-        #Saves boilerplate checking length of string,
-        # Intead, assume it's valid, and otherwise throw error
+        #Saves boilerplate string checks,
+        # Intead, assume field is valid, and otherwise throw error
         except (IndexError, ValueError):
             raise InvalidFieldError(f)
 
@@ -85,15 +87,19 @@ class BasicCronRule(object):
             Parses a cron_string that looks like "m h dom moy dow year"
             return is a dictionary of sets holding integers contained by that field
         """
-        fields = cron_string.split(" ")
-        return {
-            "minutes": cls.parse_field(fields[0], 0, 59),
-            "hours": cls.parse_field(fields[1], 0, 23),
-            "dom": cls.parse_field(fields[2], 1, 31),
-            "moy": cls.parse_field(fields[3], 1, 12),
-            "dow": cls.parse_field(fields[4], 1, 7),
-            "year": cls.parse_field(fields[5], 2000, 2025)  #What is a sensible year here?
-        }
+        try:
+            fields = cron_string.split(" ")
+            return {
+                "minutes": cls.parse_field(fields[0], 0, 59),
+                "hours": cls.parse_field(fields[1], 0, 23),
+                "dom": cls.parse_field(fields[2], 1, 31),
+                "moy": cls.parse_field(fields[3], 1, 12),
+                "dow": cls.parse_field(fields[4], 1, 7),
+                "year": cls.parse_field(fields[5], 2000, 2025)  #What is a sensible year here?
+            }
+        except InvalidFieldError as e:
+            raise InvalidCronStringError("{}:  ({})".format(cron_string, e.args[0]))
+
 
     @staticmethod
     def is_holiday(rule):
@@ -161,17 +167,24 @@ class CronRangeRule(BasicCronRule):
             #Otherwise assume nomal cron field
             return super(CronRangeRule, cls).parse_field(f, minimum, maximum)
 
+
     @classmethod
     def parse(cls, cron_string):
-        fields = cron_string.split(" ")
-        return {
-            "start": cls.parse_field(fields[0], 0, 0),
-            "stop": cls.parse_field(fields[1], 0, 0),
-            "dom": cls.parse_field(fields[2], 1, 31),
-            "moy": cls.parse_field(fields[3], 1, 12),
-            "dow": cls.parse_field(fields[4], 1, 7),
-            "year": cls.parse_field(fields[5], 2000, 2025)  #What is a sensible year here?
-        }
+        try:
+            if not cls.looks_like_range_rule(cron_string):
+                raise InvalidCronStringError(cron_string)
+
+            fields = cron_string.split(" ")
+            return {
+                "start": cls.parse_field(fields[0]),
+                "stop": cls.parse_field(fields[1]),
+                "dom": cls.parse_field(fields[2], 1, 31),
+                "moy": cls.parse_field(fields[3], 1, 12),
+                "dow": cls.parse_field(fields[4], 1, 7),
+                "year": cls.parse_field(fields[5], 2000, 2025)  #What is a sensible year here?
+            }
+        except InvalidFieldError as e:
+            raise InvalidCronStringError("{}:  ({})".format(cron_string, e.args[0]))
 
 
     def contains(self, time_obj):
@@ -204,7 +217,7 @@ class CronRangeRule(BasicCronRule):
 
 
     @staticmethod
-    def like_range_rule(cron_string):
+    def looks_like_range_rule(cron_string):
         """
             This class method checks whether or not a cron string looks like "12:34 13:31 ..."
             It doesn't go through the logic of checking each field.  Parsing is equivalent to validating
@@ -219,10 +232,13 @@ class CronRangeRule(BasicCronRule):
         """
             This class method checks whether or not a cron string looks like "12:34 13:31 * */2 1-5 *"
             That is, the first two fields are start and stop, and the last 4 are standard cron
+
+            Note that this is just a wrapper around parse(), so usually it's faster to just attempt parse, 
+                and catch the error
         """
         try:
-            map(CronRangeRule.parse_field, cron_string.split(" ")[2:7])
-        except:
+            CronRangeRule.parse(cron_string)
+            return True
+        except InvalidCronStringError:
             return False
 
-        return CronRangeRule.like_range_rule(cron_string)

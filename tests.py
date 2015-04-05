@@ -36,6 +36,10 @@ class TestBasicCronRule(unittest.TestCase):
         self.assertTrue( all([d in rule.rulesets["dow"] for d in xrange(1,6)]) )
         self.assertTrue( all([y in rule.rulesets["year"] for y in xrange(2000,2021)]) )
 
+        with self.assertRaises(InvalidCronStringError):
+             BasicCronRule.parse("1-* * * * * *")
+    
+
 
     def test_is_holiday(self):
         rule = BasicCronRule("* 7-19 * * 1-5 * ")
@@ -102,6 +106,12 @@ class TestCronRangeRule(unittest.TestCase):
         self.assertTrue( all([d in rule.rulesets["dow"] for d in xrange(1,6)]) )
         self.assertTrue( all([y in rule.rulesets["year"] for y in xrange(2000,2021)]) )
 
+        with self.assertRaises(InvalidCronStringError):
+            CronRangeRule.parse("1:23 12:34 */ * * *")
+
+        with self.assertRaises(InvalidCronStringError):
+            CronRangeRule.parse("* * * * * *")
+
 
     def test_contains(self):
         # Weekday
@@ -120,6 +130,21 @@ class TestCronRangeRule(unittest.TestCase):
         self.assertTrue(rule.contains(datetime(2014,12,20,8,0)))
         self.assertFalse(rule.contains(datetime(2014,12,20,8,1)))
         self.assertFalse(rule.contains(datetime(2014,12,17,7,0)))
+
+
+    def test_looks_like_range_rule(self):
+        self.assertTrue(CronRangeRule.looks_like_range_rule("7:30 19:00 * * * *"))
+        self.assertFalse(CronRangeRule.looks_like_range_rule("* * * * * *"))
+        self.assertFalse(CronRangeRule.looks_like_range_rule("* 19:00 * * * *"))
+        self.assertFalse(CronRangeRule.looks_like_range_rule("7:30 * * * * *"))
+
+
+    def test_is_valid(self):
+        self.assertTrue(CronRangeRule.is_valid("7:30 19:00 * * * *"))
+        self.assertFalse(CronRangeRule.is_valid("7:30 19:00 * */ * *"))
+        self.assertFalse(CronRangeRule.is_valid("* * * * * *"))
+        self.assertFalse(CronRangeRule.is_valid("* 19:00 * * * *"))
+        self.assertFalse(CronRangeRule.is_valid("7:30 * * * * *"))
                 
 
 class TestBasicCronParser(unittest.TestCase):
