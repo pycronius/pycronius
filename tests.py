@@ -2,7 +2,7 @@ from datetime import datetime
 import unittest
 
 from cronparser import CronParser
-from rules import BasicCronRule
+from rules import *
 
 
 #TODO: test tz-aware datetime strings
@@ -11,7 +11,6 @@ from rules import BasicCronRule
 class TestBasicCronRule(unittest.TestCase):
 
     def test_parse_field(self):
-        r = BasicCronRule("* * * * * *")
         strs = {
             "5": {5},
             "2-9": set(xrange(2,10)),
@@ -21,7 +20,10 @@ class TestBasicCronRule(unittest.TestCase):
             "*/3": set(xrange(0,60,3))
         }
         for f, v in strs.items():
-            self.assertTrue(r.parse_field(f, 0, 59) == v)
+            self.assertTrue(BasicCronRule.parse_field(f, 0, 59) == v)
+
+        with self.assertRaises(InvalidFieldError):
+             BasicCronRule.parse_field("1-*", 0, 0)
 
 
     def test_parse(self):
@@ -68,6 +70,57 @@ class TestBasicCronRule(unittest.TestCase):
         rule = BasicCronRule("* * 25 12 * *")
         self.assertTrue(rule.contains(datetime(2014,12,25,12,0)))
 
+
+
+class TestCronRangeRule(unittest.TestCase):
+
+    def test_parse_field(self):
+        strs = {
+            "5": {5},
+            "2-9": set(xrange(2,10)),
+            "20-30": set(xrange(20,31)), 
+            "20-30/2": set(xrange(20,31,2)), 
+            "*": set(xrange(0,60)),
+            "*/3": set(xrange(0,60,3)),
+        }
+        for f, v in strs.items():
+            self.assertTrue(CronRangeRule.parse_field(f, 0, 59) == v)
+        
+        hhmm = CronRangeRule.parse_field("13:45")
+        
+        self.assertEqual(hhmm.hour, 13)
+        self.assertEqual(hhmm.minute, 45)
+
+
+    def test_parse(self):
+        rule = CronRangeRule("7:30 19:15 * * 1-5 * ")
+
+        self.assertTrue( rule.rulesets["start"].hour == 7 and rule.rulesets["start"].minute == 30 )
+        self.assertTrue( rule.rulesets["stop"].hour == 19 and rule.rulesets["stop"].minute == 15 )
+        self.assertTrue( all([d in rule.rulesets["dom"] for d in xrange(1,32)]) )
+        self.assertTrue( all([m in rule.rulesets["moy"] for m in xrange(1,13)]) )
+        self.assertTrue( all([d in rule.rulesets["dow"] for d in xrange(1,6)]) )
+        self.assertTrue( all([y in rule.rulesets["year"] for y in xrange(2000,2021)]) )
+
+
+    def test_contains(self):
+        # Weekday
+        rule = CronRangeRule("7:30 19:15 * * * *")
+        self.assertTrue(rule.contains(datetime(2014,12,19,12,0)))
+        self.assertTrue(rule.contains(datetime(2014,12,19,7,30)))
+        self.assertFalse(rule.contains(datetime(2014,12,19,19,20)))
+        
+        # Weekday Night
+        rule = CronRangeRule("20:00 23:59 * * * *")
+        self.assertTrue(rule.contains(datetime(2014,12,19,21,30)))
+        self.assertFalse(rule.contains(datetime(2014,12,19,19,59)))
+
+        # Weekend
+        rule = CronRangeRule("00:00 08:00 * * 6-7 *")
+        self.assertTrue(rule.contains(datetime(2014,12,20,8,0)))
+        self.assertFalse(rule.contains(datetime(2014,12,20,8,1)))
+        self.assertFalse(rule.contains(datetime(2014,12,17,7,0)))
+                
 
 class TestBasicCronParser(unittest.TestCase):
     pass
@@ -127,10 +180,10 @@ class TestBasicCronParser(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    # suite = unittest.TestSuite()
-    # suite.addTest(TestBasicCronRule('test_parse'))
+    suite = unittest.TestSuite()
+    # suite.addTest(TestCronRangeRule('test_parse_field'))
     # suite = unittest.TestLoader().loadTestsFromTestCase(TestBasicCronParser)
-    suite = unittest.TestLoader().loadTestsFromNames(['tests.TestBasicCronRule', 'tests.TestBasicCronParser'])
+    suite = unittest.TestLoader().loadTestsFromNames(['tests'])
     runner = unittest.TextTestRunner()
     runner.run(suite)
     

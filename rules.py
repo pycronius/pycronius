@@ -75,7 +75,7 @@ class BasicCronRule(object):
 
         #Saves boilerplate checking length of string,
         # Intead, assume it's valid, and otherwise throw error
-        except IndexError:
+        except (IndexError, ValueError):
             raise InvalidFieldError(f)
 
 
@@ -149,19 +149,17 @@ class BasicCronRule(object):
 
 class CronRangeRule(BasicCronRule):
 
-    hhmm_re = "(\d\d):(\d\d)"
+    hhmm_re = "(\d{1,2}):(\d{1,2})"
 
     @classmethod
-    def parse_field(cls, f, minimum, maximum):
+    def parse_field(cls, f, minimum=0, maximum=0):
         #Try to find HH:MM fields
         try:
-            hours, minutes = map(int, re.findall(CronRangeRule.hhmm_re, f.strip())[0])
-            return Bunch(hours=hours, minutes=minutes)
+            hour, minute = map(int, re.findall(CronRangeRule.hhmm_re, f.strip())[0])
+            return Bunch(hour=hour, minute=minute)
         except:
-            raise InvalidFieldError(f)
-
-        #Otherwise assume nomal cron
-        return super(CronRangeRule, cls).parse_field(f, minimum, maximum)
+            #Otherwise assume nomal cron field
+            return super(CronRangeRule, cls).parse_field(f, minimum, maximum)
 
     @classmethod
     def parse(cls, cron_string):
@@ -176,7 +174,7 @@ class CronRangeRule(BasicCronRule):
         }
 
 
-    def contains(self):
+    def contains(self, time_obj):
         """
             Returns True/False if time_obj is contained in ruleset
         """
