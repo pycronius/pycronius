@@ -30,7 +30,6 @@ def benchmark_basic_cronparser():
                         day = datetime(y,m,d,h,0)
 
     delta_dtos = time.time() - start
-    print "Time to build {} datetime objects: {:f}s".format(i, delta_dtos)
 
 
     start = time.time()
@@ -44,6 +43,7 @@ def benchmark_basic_cronparser():
 
     delta_pick_rules = time.time() - start
     print "Time to run {} rule checks: {:>15f}s".format(i, delta_pick_rules)
+    print "Time to build {} datetime objects: {:f}s".format(i, delta_dtos)
     print "Difference: {:>33f}s".format(delta_pick_rules - delta_dtos)
 
 

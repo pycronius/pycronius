@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import *
 import re
 
-from rules import BasicCronRule
+from rules import *
 
 #TODO: rename moy -> month
 #TODO: add support for ','
@@ -30,17 +30,33 @@ class CronParser(object):
         self.holiday_exceptions = {}  #Optimization to reduce the effect of one day exceptions on the runtime
                                       #  Looks like {(dd,mm,yyyy): name}  
 
-        for rname, rule in rules:
-            self.rules[rname].append(BasicCronRule(rule))
 
+        self.add_rules(rules)
+        self.add_exceptions(exceptions)
+
+    
+
+    def add_rules(self, rules):
+        for rname, rule in rules:
+            self.rules[rname].append(self.get_rule(rule))
+
+
+
+    def add_exceptions(self, exceptions):
         for ename, exception in exceptions:
             #Holidays can be queried faster than more general rules
             if BasicCronRule.is_holiday(exception):
                 self.holiday_exceptions[BasicCronRule.holiday_tuple(exception)] = ename
             else:
-                self.exceptions[ename].append(BasicCronRule(exception))                
+                self.exceptions[ename].append(self.get_rule(exception))                
 
 
+    def get_rule(self, cron_string):
+        #Try range rule
+        if CronRangeRule.looks_like_range_rule(cron_string):
+            return CronRangeRule(cron_string)
+        else:
+            return BasicCronRule(cron_string)
 
 
     def pick_rules(self, time_obj):

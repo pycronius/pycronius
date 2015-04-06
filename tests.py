@@ -147,8 +147,7 @@ class TestCronRangeRule(unittest.TestCase):
         self.assertFalse(CronRangeRule.is_valid("7:30 * * * * *"))
                 
 
-class TestBasicCronParser(unittest.TestCase):
-    pass
+class TestCronParser(unittest.TestCase):
 
     def test_holiday_rules(self):
         rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
@@ -178,25 +177,31 @@ class TestBasicCronParser(unittest.TestCase):
 
     def test_pick_rules(self):
         cp = CronParser(
-            [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")],
-            [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
+            [("open", "7:00 19:30 * * * *"), ("closed", "* 6 * * * *"), ("closed", "19:31 23:59 * * * *")],
+            [("closed", "0:00 8:30 * * 6-7 *"), ("closed", "18:30 23:59 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *"), ("closed", "* * 5 4 * 2015")]
         )
 
 
         # Weekday
-        self.assertEqual(cp.pick_rules(datetime(2014,12,19,12,0))[0], "open")
+        self.assertEqual(cp.pick_rules(datetime(2014,12,19,18,31))[0], "open")
         
         # Weekday Night
-        self.assertEqual(cp.pick_rules(datetime(2014,12,19,21,30))[0], "closed")
+        self.assertEqual(cp.pick_rules(datetime(2014,12,19,19,31))[0], "closed")
 
-        # Weekend
-        self.assertEqual(cp.pick_rules(datetime(2014,12,20,8,30))[0], "closed")
+        # Weekend Morning
+        self.assertEqual(cp.pick_rules(datetime(2014,12,20,8,0))[0], "closed")
+
+        # Weekend Day
+        self.assertEqual(cp.pick_rules(datetime(2014,12,20,12,0))[0], "open")
         
         # #Weekend Night
-        self.assertEqual(cp.pick_rules(datetime(2014,12,20,17,30))[0], "closed")
+        self.assertEqual(cp.pick_rules(datetime(2014,12,20,18,31))[0], "closed")
         
         # Christmas (Thursday)
         self.assertEqual(cp.pick_rules(datetime(2014,12,25,12,0))[0], "closed")
+
+        # Easter (Sunday)
+        self.assertEqual(cp.pick_rules(datetime(2015,4,5,12,0))[0], "closed")
 
 
 

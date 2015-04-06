@@ -210,7 +210,8 @@ class CronRangeRule(BasicCronRule):
         if time_obj.hour < self.rulesets["start"].hour or (time_obj.hour == self.rulesets["start"].hour and time_obj.minute < self.rulesets["start"].minute):
             return False
 
-        if time_obj.hour > self.rulesets["stop"].hour or (time_obj.hour == self.rulesets["stop"].hour and time_obj.minute > self.rulesets["stop"].minute):
+        if time_obj.hour > self.rulesets["stop"].hour or (time_obj.hour == self.rulesets["stop"].hour and\
+             time_obj.minute > self.rulesets["stop"].minute):
             return False
 
         return True
