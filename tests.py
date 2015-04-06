@@ -1,7 +1,7 @@
 from datetime import datetime
 import unittest
 
-from cronparser import CronParser
+from scheduler import Scheduler
 from rules import *
 
 
@@ -149,7 +149,7 @@ class TestCronRangeRule(unittest.TestCase):
         self.assertFalse(CronRangeRule.is_valid("7:30 * * * * *"))
                 
 
-class TestCronParser(unittest.TestCase):
+class TestScheduler(unittest.TestCase):
 
     def test_holiday_rules(self):
         rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
@@ -158,7 +158,7 @@ class TestCronParser(unittest.TestCase):
         for m in xrange(1,12):
             exceptions.append(("closed", "* * 1 %s * 2014" % m))
 
-        cp = CronParser(rules, exceptions)
+        cp = Scheduler(rules, exceptions)
 
         # Weekday
         self.assertEqual(cp.pick_rules(datetime(2014,12,19,12,0))[0], "open")
@@ -178,7 +178,7 @@ class TestCronParser(unittest.TestCase):
 
 
     def test_pick_rules(self):
-        cp = CronParser(
+        cp = Scheduler(
             [("open", "7:00 19:30 * * * *"), ("closed", "* 6 * * * *"), ("closed", "19:31 23:59 * * * *")],
             [("closed", "0:00 8:30 * * 6-7 *"), ("closed", "18:30 23:59 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *"), ("closed", "* * 5 4 * 2015")]
         )
@@ -207,7 +207,7 @@ class TestCronParser(unittest.TestCase):
 
 
     def test_start_stop(self):
-        cp = CronParser(
+        cp = Scheduler(
             [("odd_year", "* * * * * *")],
             [("even_year", "* * * * * */2")],
             start_year=1990, stop_year=1999
@@ -224,7 +224,7 @@ class TestCronParser(unittest.TestCase):
 if __name__ == "__main__":
     suite = unittest.TestSuite()
     # suite.addTest(TestCronRangeRule('test_parse_field'))
-    # suite = unittest.TestLoader().loadTestsFromTestCase(TestBasicCronParser)
+    # suite = unittest.TestLoader().loadTestsFromTestCase(TestBasicScheduler)
     suite = unittest.TestLoader().loadTestsFromNames(['tests'])
     runner = unittest.TextTestRunner()
     runner.run(suite)

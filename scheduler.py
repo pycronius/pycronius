@@ -6,10 +6,10 @@ from rules import *
 
 #TODO: rename moy -> month
 #TODO: add support for ','
-#TODO: More accurate name for CronParser
+#TODO: More accurate name for Scheduler
 
 
-class CronParser(object):
+class Scheduler(object):
     """
         Space delimited cron string:
         

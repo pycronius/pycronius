@@ -1,7 +1,7 @@
 from datetime import *
-from cronparser import CronParser
+from scheduler import Scheduler
 
-def benchmark_basic_cronparser():
+def benchmark_basic_scheduler():
     import time
 
     rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
@@ -18,9 +18,9 @@ def benchmark_basic_cronparser():
     print "Rules: {}".format(len(exceptions)+len(rules))
     start = time.time()
     
-    cp = CronParser(rules, exceptions)
+    cp = Scheduler(rules, exceptions)
 
-    print "Time to build CronParser: {:>19f}s".format(time.time() - start)
+    print "Time to build Scheduler: {:>19f}s".format(time.time() - start)
     
     start = time.time()
     i = 0
@@ -50,4 +50,4 @@ def benchmark_basic_cronparser():
 
 
 if __name__ == "__main__":
-    benchmark_basic_cronparser()
+    benchmark_basic_scheduler()
