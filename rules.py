@@ -120,6 +120,22 @@ class BasicCronRule(object):
         return tuple([ int(d) for d in re.findall(BasicCronRule.holiday_re, hrule.strip())[0] ])
 
 
+    @classmethod
+    def is_valid(cls, cron_string):
+        """
+            This class method checks whether or not a cron string looks like "12:34 13:31 * */2 1-5 *"
+            That is, the first two fields are start and stop, and the last 4 are standard cron
+
+            Note that this is just a wrapper around parse(), so usually it's faster to just attempt parse, 
+                and catch the error
+        """
+        try:
+            cls.parse(cron_string)
+            return True
+        except InvalidCronStringError:
+            return False
+
+
     def contains(self, time_obj):
         """
             Returns True/False if time_obj is contained in ruleset
@@ -228,18 +244,4 @@ class CronRangeRule(BasicCronRule):
         return (hhmm_re.match(fields[0]) is not None) and (hhmm_re.match(fields[1]) is not None)
 
 
-    @staticmethod
-    def is_valid(cron_string):
-        """
-            This class method checks whether or not a cron string looks like "12:34 13:31 * */2 1-5 *"
-            That is, the first two fields are start and stop, and the last 4 are standard cron
-
-            Note that this is just a wrapper around parse(), so usually it's faster to just attempt parse, 
-                and catch the error
-        """
-        try:
-            CronRangeRule.parse(cron_string)
-            return True
-        except InvalidCronStringError:
-            return False
 

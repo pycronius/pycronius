@@ -6,6 +6,8 @@ def benchmark_basic_cronparser():
 
     rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
     exceptions = [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
+    # rules = [("open", "7:00 19:00 * * * *"), ("closed", "0:00 6:59 * * * *"), ("closed", "19:01 23:59 * * * *")]
+    # exceptions = [("closed", "0:00 8:29 * * 6-7 *"), ("closed", "18:01 23:59 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
 
     #Add Holidays
     for d in xrange(1,31, 2):
