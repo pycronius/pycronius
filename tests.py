@@ -27,14 +27,16 @@ class TestBasicCronRule(unittest.TestCase):
 
 
     def test_parse(self):
-        rule = BasicCronRule("* 7-19 * * 1-5 * ")
+        rule = BasicCronRule("* 7-19 * * 1-5 */2", start_year=1999, stop_year=2021)
 
         self.assertTrue( all([m in rule.rulesets["minutes"] for m in xrange(0,60)]) )
         self.assertTrue( all([h in rule.rulesets["hours"] for h in xrange(7,20)]) )
         self.assertTrue( all([d in rule.rulesets["dom"] for d in xrange(1,32)]) )
         self.assertTrue( all([m in rule.rulesets["moy"] for m in xrange(1,13)]) )
         self.assertTrue( all([d in rule.rulesets["dow"] for d in xrange(1,6)]) )
-        self.assertTrue( all([y in rule.rulesets["year"] for y in xrange(2000,2021)]) )
+        self.assertTrue( all([y in rule.rulesets["year"] for y in xrange(1999,2021,2)]) )
+        self.assertFalse( all([y in rule.rulesets["year"] for y in xrange(1999,2021)]) )
+        self.assertFalse( all([y in rule.rulesets["year"] for y in xrange(1999,2024,2)]) )
 
         with self.assertRaises(InvalidCronStringError):
              BasicCronRule.parse("1-* * * * * *")

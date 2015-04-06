@@ -2,9 +2,6 @@ import re
 
 from utils import Bunch
 
-#TODO: option to set min/max year
-#TODO: add is_valid_rule methods
-
 
 #Optimization for handling wildcards
 class WildCardSet(object):
@@ -23,10 +20,20 @@ class InvalidCronStringError(Exception):
 
 class BasicCronRule(object):
 
+    start_year = 2000
+    stop_year = 2025
     holiday_re = "[\*]\s[\*]\s(\d{1,2})\s(\d{1,2})\s[\*]\s(\d{4})"
     
-    def __init__(self, cron_string):
-        self.rulesets = self.parse(cron_string)
+    def __init__(self, cron_string, start_year=None, stop_year=None):
+        """
+            cron_string should look like: "* */6 * * 6-7 2015"
+
+            start_year and stop_year are integers that determine the inclusive range of years that will be checked
+                default is the class variables start_year and stop_year
+        """
+
+        self.rulesets = self.parse(cron_string, start_year, stop_year)
+
 
 
     @classmethod
@@ -82,11 +89,14 @@ class BasicCronRule(object):
 
 
     @classmethod
-    def parse(cls, cron_string):
+    def parse(cls, cron_string, start_year=None, stop_year=None):
         """
             Parses a cron_string that looks like "m h dom moy dow year"
             return is a dictionary of sets holding integers contained by that field
         """
+        start_year = start_year or cls.start_year
+        stop_year = stop_year or cls.stop_year
+
         try:
             fields = cron_string.split(" ")
             return {
@@ -95,7 +105,7 @@ class BasicCronRule(object):
                 "dom": cls.parse_field(fields[2], 1, 31),
                 "moy": cls.parse_field(fields[3], 1, 12),
                 "dow": cls.parse_field(fields[4], 1, 7),
-                "year": cls.parse_field(fields[5], 2000, 2025)  #What is a sensible year here?
+                "year": cls.parse_field(fields[5], start_year, stop_year)  #What is a sensible year here?
             }
         except InvalidFieldError as e:
             raise InvalidCronStringError("{}:  ({})".format(cron_string, e.args[0]))
@@ -182,10 +192,14 @@ class CronRangeRule(BasicCronRule):
 
 
     @classmethod
-    def parse(cls, cron_string):
+    def parse(cls, cron_string, start_year=None, stop_year=None):
         try:
+            
             if not cls.looks_like_range_rule(cron_string):
                 raise InvalidCronStringError(cron_string)
+
+            start_year = start_year or cls.start_year
+            stop_year = stop_year or cls.stop_year
 
             fields = cron_string.split(" ")
             return {
@@ -194,7 +208,7 @@ class CronRangeRule(BasicCronRule):
                 "dom": cls.parse_field(fields[2], 1, 31),
                 "moy": cls.parse_field(fields[3], 1, 12),
                 "dow": cls.parse_field(fields[4], 1, 7),
-                "year": cls.parse_field(fields[5], 2000, 2025)  #What is a sensible year here?
+                "year": cls.parse_field(fields[5], start_year, stop_year)  #What is a sensible year here?
             }
         except InvalidFieldError as e:
             raise InvalidCronStringError("{}:  ({})".format(cron_string, e.args[0]))
