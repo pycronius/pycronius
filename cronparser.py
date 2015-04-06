@@ -19,10 +19,13 @@ class CronParser(object):
     """
     fields = ["minute", "hour", "dom", "moy", "dow", "year"]
 
-    def __init__(self, rules=list(), exceptions=list(), in_utc=False):
+    def __init__(self, rules=list(), exceptions=list(), start_year=None, stop_year=None, in_utc=False):
         """
             rules and exeptions should look like:
             [("name", "* * * * * *"), ...]
+
+            start_year and stop_year are integers that determine the inclusive range of years that will be checked
+                default is the class variables start_year and stop_year for the Rule class
         """
         
         self.rules = defaultdict(list)
@@ -30,6 +33,8 @@ class CronParser(object):
         self.holiday_exceptions = {}  #Optimization to reduce the effect of one day exceptions on the runtime
                                       #  Looks like {(dd,mm,yyyy): name}  
 
+        self.start_year = start_year
+        self.stop_year = stop_year
 
         self.add_rules(rules)
         self.add_exceptions(exceptions)
@@ -54,9 +59,9 @@ class CronParser(object):
     def get_rule(self, cron_string):
         #Try range rule
         if CronRangeRule.looks_like_range_rule(cron_string):
-            return CronRangeRule(cron_string)
+            return CronRangeRule(cron_string, start_year=self.start_year, stop_year=self.stop_year)
         else:
-            return BasicCronRule(cron_string)
+            return BasicCronRule(cron_string, start_year=self.start_year, stop_year=self.stop_year)
 
 
     def pick_rules(self, time_obj):

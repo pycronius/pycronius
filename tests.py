@@ -206,6 +206,16 @@ class TestCronParser(unittest.TestCase):
         self.assertEqual(cp.pick_rules(datetime(2015,4,5,12,0))[0], "closed")
 
 
+    def test_start_stop(self):
+        cp = CronParser(
+            [("odd_year", "* * * * * *")],
+            [("even_year", "* * * * * */2")],
+            start_year=1990, stop_year=1999
+        )
+
+        self.assertEqual(cp.pick_rules(datetime(1991,12,19,18,31))[0], "odd_year")
+        self.assertEqual(cp.pick_rules(datetime(1992,12,19,18,31))[0], "even_year")
+        self.assertEqual(cp.pick_rules(datetime(2000,12,19,18,31)), [])
 
 
 
