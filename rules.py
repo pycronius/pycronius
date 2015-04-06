@@ -123,9 +123,6 @@ class BasicCronRule(object):
     @classmethod
     def is_valid(cls, cron_string):
         """
-            This class method checks whether or not a cron string looks like "12:34 13:31 * */2 1-5 *"
-            That is, the first two fields are start and stop, and the last 4 are standard cron
-
             Note that this is just a wrapper around parse(), so usually it's faster to just attempt parse, 
                 and catch the error
         """
