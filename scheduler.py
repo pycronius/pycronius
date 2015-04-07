@@ -4,19 +4,16 @@ import re
 
 from rules import *
 
-#TODO: rename moy -> month
-#TODO: add support for ','
-
 
 class Scheduler(object):
     """
         Space delimited cron string:
         
-        minute[0..59] hour[0..23] dom[1..31] moy[1..12] dow[1..7](1=Monday) year
+        minute[0..59] hour[0..23] dom[1..31] month[1..12] dow[1..7](1=Monday) year
 
-        allows "*", "-", "/", and "[0-9]"
+        allows "*", "-", "/", "[0-9]", and ","
     """
-    fields = ["minute", "hour", "dom", "moy", "dow", "year"]
+    fields = ["minute", "hour", "dom", "month", "dow", "year"]
 
     def __init__(self, rules=list(), exceptions=list(), start_year=None, stop_year=None, in_utc=False):
         """

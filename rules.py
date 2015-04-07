@@ -64,7 +64,7 @@ class BasicCronRule(object):
     @classmethod
     def parse(cls, cron_string, start_year=None, stop_year=None):
         """
-            Parses a cron_string that looks like "m h dom moy dow year"
+            Parses a cron_string that looks like "m h dom mo dow year"
             return is a dictionary of sets holding integers contained by that field
         """
         start_year = start_year or cls.start_year
@@ -76,7 +76,7 @@ class BasicCronRule(object):
                 "minutes": cls.parse_field(fields[0], 0, 59),
                 "hours": cls.parse_field(fields[1], 0, 23),
                 "dom": cls.parse_field(fields[2], 1, 31),
-                "moy": cls.parse_field(fields[3], 1, 12),
+                "month": cls.parse_field(fields[3], 1, 12),
                 "dow": cls.parse_field(fields[4], 1, 7),
                 "year": cls.parse_field(fields[5], start_year, stop_year)  #What is a sensible year here?
             }
@@ -125,7 +125,7 @@ class BasicCronRule(object):
         if time_obj.year not in self.rulesets["year"]:
             return False
         
-        if time_obj.month not in self.rulesets["moy"]:
+        if time_obj.month not in self.rulesets["month"]:
             return False
 
         if time_obj.day not in self.rulesets["dom"]:
@@ -179,7 +179,7 @@ class CronRangeRule(BasicCronRule):
                 "start": cls.parse_field(fields[0]),
                 "stop": cls.parse_field(fields[1]),
                 "dom": cls.parse_field(fields[2], 1, 31),
-                "moy": cls.parse_field(fields[3], 1, 12),
+                "month": cls.parse_field(fields[3], 1, 12),
                 "dow": cls.parse_field(fields[4], 1, 7),
                 "year": cls.parse_field(fields[5], start_year, stop_year)  #What is a sensible year here?
             }
@@ -197,7 +197,7 @@ class CronRangeRule(BasicCronRule):
         if time_obj.year not in self.rulesets["year"]:
             return False
         
-        if time_obj.month not in self.rulesets["moy"]:
+        if time_obj.month not in self.rulesets["month"]:
             return False
 
         if time_obj.day not in self.rulesets["dom"]:

@@ -34,7 +34,7 @@ class TestBasicCronRule(unittest.TestCase):
         self.assertTrue( all([m in rule.rulesets["minutes"] for m in xrange(0,60)]) )
         self.assertTrue( all([h in rule.rulesets["hours"] for h in xrange(7,20)]) )
         self.assertTrue( all([d in rule.rulesets["dom"] for d in xrange(1,32)]) )
-        self.assertTrue( all([m in rule.rulesets["moy"] for m in xrange(1,13)]) )
+        self.assertTrue( all([m in rule.rulesets["month"] for m in xrange(1,13)]) )
         self.assertTrue( all([d in rule.rulesets["dow"] for d in xrange(1,6)]) )
         self.assertTrue( all([y in rule.rulesets["year"] for y in xrange(1999,2021,2)]) )
         self.assertFalse( all([y in rule.rulesets["year"] for y in xrange(1999,2021)]) )
@@ -108,7 +108,7 @@ class TestCronRangeRule(unittest.TestCase):
         self.assertTrue( rule.rulesets["start"].hour == 7 and rule.rulesets["start"].minute == 30 )
         self.assertTrue( rule.rulesets["stop"].hour == 19 and rule.rulesets["stop"].minute == 15 )
         self.assertTrue( all([d in rule.rulesets["dom"] for d in xrange(1,32)]) )
-        self.assertTrue( all([m in rule.rulesets["moy"] for m in xrange(1,13)]) )
+        self.assertTrue( all([m in rule.rulesets["month"] for m in xrange(1,13)]) )
         self.assertTrue( all([d in rule.rulesets["dow"] for d in xrange(1,6)]) )
         self.assertTrue( all([y in rule.rulesets["year"] for y in xrange(2000,2021)]) )
 
