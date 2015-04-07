@@ -12,15 +12,17 @@ class TestBasicCronRule(unittest.TestCase):
 
     def test_parse_field(self):
         strs = {
-            "5": {5},
-            "2-9": set(xrange(2,10)),
-            "20-30": set(xrange(20,31)), 
-            "20-30/2": set(xrange(20,31,2)), 
-            "*": set(xrange(0,60)),
-            "*/3": set(xrange(0,60,3))
+            "5": [5],
+            "2-9": xrange(2,10),
+            "20-30": xrange(20,31), 
+            "20-30/2": xrange(20,31,2), 
+            "*": xrange(0,60),
+            "*/3": xrange(0,60,3),
+            "1,2-10/2,13-15": [1,2,4,6,8,10,13,14,15]
         }
         for f, v in strs.items():
-            self.assertTrue(BasicCronRule.parse_field(f, 0, 59) == v)
+            rule = BasicCronRule.parse_field(f, 0, 59)
+            self.assertTrue(all([x in rule for x in v]))
 
         with self.assertRaises(InvalidFieldError):
              BasicCronRule.parse_field("1-*", 0, 0)
@@ -82,15 +84,17 @@ class TestCronRangeRule(unittest.TestCase):
 
     def test_parse_field(self):
         strs = {
-            "5": {5},
-            "2-9": set(xrange(2,10)),
-            "20-30": set(xrange(20,31)), 
-            "20-30/2": set(xrange(20,31,2)), 
-            "*": set(xrange(0,60)),
-            "*/3": set(xrange(0,60,3)),
+            "5": [5],
+            "2-9": xrange(2,10),
+            "20-30": xrange(20,31), 
+            "20-30/2": xrange(20,31,2), 
+            "*": xrange(0,60),
+            "*/3": xrange(0,60,3)
         }
+
         for f, v in strs.items():
-            self.assertTrue(CronRangeRule.parse_field(f, 0, 59) == v)
+            rule = BasicCronRule.parse_field(f, 0, 59)
+            self.assertTrue(all([x in rule for x in v]))
         
         hhmm = CronRangeRule.parse_field("13:45")
         
@@ -180,7 +184,7 @@ class TestScheduler(unittest.TestCase):
     def test_pick_rules(self):
         cp = Scheduler(
             [("open", "7:00 19:30 * * * *"), ("closed", "* 6 * * * *"), ("closed", "19:31 23:59 * * * *")],
-            [("closed", "0:00 8:30 * * 6-7 *"), ("closed", "18:30 23:59 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *"), ("closed", "* * 5 4 * 2015")]
+            [("closed", "0:00 8:30 * * 6-7 *"), ("closed", "18:30 23:59 * * 6-7 *"), ("closed", "* * 24,25 12 * *"), ("closed", "* * 4 7 * *"), ("closed", "* * 5 4 * 2015")]
         )
 
 
@@ -202,6 +206,9 @@ class TestScheduler(unittest.TestCase):
         # Christmas (Thursday)
         self.assertEqual(cp.pick_rules(datetime(2014,12,25,12,0))[0], "closed")
 
+        # Christmas Eve (Wednesday)
+        self.assertEqual(cp.pick_rules(datetime(2014,12,24,12,0))[0], "closed")
+
         # Easter (Sunday)
         self.assertEqual(cp.pick_rules(datetime(2015,4,5,12,0))[0], "closed")
 
@@ -219,11 +226,9 @@ class TestScheduler(unittest.TestCase):
 
 
 
-
-
 if __name__ == "__main__":
     suite = unittest.TestSuite()
-    # suite.addTest(TestCronRangeRule('test_parse_field'))
+    # suite.addTest(TestBasicCronRule('test_parse_field'))
     # suite = unittest.TestLoader().loadTestsFromTestCase(TestBasicScheduler)
     suite = unittest.TestLoader().loadTestsFromNames(['tests'])
     runner = unittest.TextTestRunner()

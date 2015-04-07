@@ -3,13 +3,6 @@ import re
 from utils import Bunch
 
 
-#Optimization for handling wildcards
-class WildCardSet(object):
-    #Always return true for in operator 
-    # x in WildCardSet() -> True
-    def __contains__(self, key):
-        return True
-
 
 class InvalidFieldError(Exception):
     pass
@@ -46,46 +39,26 @@ class BasicCronRule(object):
                 e.g. parse_field("0-1", 0, 2) -> set([0,1])
                 e.g. parse_field("*", 0, 1) -> set([0,1])
 
+            handles rules that look like: "12", "1-10", "1-10/2", "*", "*/10", "1-10/3,12,14-16"
         """
-        digits = {i for i in xrange(10)}
+        regexes = [
+            ("^(\d{1,2})$", lambda d: {int(d)}),
+            ("^(\d{1,2})-(\d{1,2})$", lambda t: set(xrange(int(t[0]), int(t[1])+1))),
+            ("^(\d{1,2})-(\d{1,2})\/(\d{1,2})$", lambda t: set(xrange(int(t[0]), int(t[1])+1, int(t[2])))),
+            ("^\*$", lambda wc: set(xrange(minimum, maximum+1))),
+            ("^\*\/(\d{1,2})$", lambda d: set(xrange(minimum, maximum+1, int(d)))),
+            ("^([\d\-\/]+),([\d\-\/,]+)$", lambda t: cls.parse_field(t[0]).union(cls.parse_field(t[1])))
+        ]
 
-        final_range = []
-        try:
-            #Handle clauses containing '/'
-            divisor = 1
-            div_splits = f.split("/")
 
-            if len(div_splits) > 1:
-                divisor = int(div_splits[1])
+        for regex, fn in regexes:
+            matches = re.findall(regex, f)
+            if len(matches) > 0:
+                v = fn(matches[0])
+                return v
 
-            # *, */x
-            if f[0] == "*":
-                if len(f) == 0:
-                    return WildCardSet()
-                else:
-                    return set(xrange(minimum, maximum + 1, divisor))
-               
-            # Don't parse the divisor again 
-            f = div_splits[0]
-
-            # i, j-k, j-k/x
-            hyphen_splits = f.split("-")
-            
-            if hyphen_splits[0].isdigit():
-                #j-k, j-k/x
-                if len(hyphen_splits) > 1:
-                    return set( xrange(int(hyphen_splits[0]), int(hyphen_splits[1]) + 1, divisor) )
-
-                # i
-                return {int(f)}
-
-            #If no rule matches, the string isn't valid
-            raise InvalidFieldError(f)
-
-        #Saves boilerplate string checks,
-        # Intead, assume field is valid, and otherwise throw error
-        except (IndexError, ValueError):
-            raise InvalidFieldError(f)
+        #If none of the regexes match, this field is not valid
+        raise InvalidFieldError(f)
 
 
     @classmethod
