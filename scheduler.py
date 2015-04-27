@@ -15,7 +15,7 @@ class Scheduler(object):
     """
     fields = ["minute", "hour", "dom", "month", "dow", "year"]
 
-    def __init__(self, rules=list(), exceptions=list(), start_year=None, stop_year=None, in_utc=False):
+    def __init__(self, rules=list(), exceptions=list(), start_year=None, stop_year=None):
         """
             rules and exeptions should look like:
             [("name", "* * * * * *"), ...]
