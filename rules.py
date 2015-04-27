@@ -28,7 +28,6 @@ class BasicCronRule(object):
         self.rulesets = self.parse(cron_string, start_year, stop_year)
 
 
-
     @classmethod
     def parse_field(cls, f, minimum=0, maximum=0):
         """
@@ -78,7 +77,7 @@ class BasicCronRule(object):
                 "dom": cls.parse_field(fields[2], 1, 31),
                 "month": cls.parse_field(fields[3], 1, 12),
                 "dow": cls.parse_field(fields[4], 1, 7),
-                "year": cls.parse_field(fields[5], start_year, stop_year)  # What is a sensible year here?
+                "year": cls.parse_field(fields[5], start_year, stop_year)  #What is a sensible year here?
             }
         except InvalidFieldError as e:
             raise InvalidCronStringError("{}:  ({})".format(cron_string, e.args[0]))
@@ -226,6 +225,3 @@ class CronRangeRule(BasicCronRule):
         fields = cron_string.split(" ")
         hhmm_re = re.compile(CronRangeRule.hhmm_re)
         return (hhmm_re.match(fields[0]) is not None) and (hhmm_re.match(fields[1]) is not None)
-
-
-
