@@ -8,7 +8,7 @@ from rules import *
 class Scheduler(object):
     """
         Space delimited cron string:
-        
+
         minute[0..59] hour[0..23] dom[1..31] month[1..12] dow[1..7](1=Monday) year
 
         allows "*", "-", "/", "[0-9]", and ","
@@ -23,11 +23,11 @@ class Scheduler(object):
             start_year and stop_year are integers that determine the inclusive range of years that will be checked
                 default is the class variables start_year and stop_year for the Rule class
         """
-        
+
         self.rules = defaultdict(list)
         self.exceptions = defaultdict(list)
-        self.holiday_exceptions = {}  #Optimization to reduce the effect of one day exceptions on the runtime
-                                      #  Looks like {(dd,mm,yyyy): name}  
+        self.holiday_exceptions = {}  # Optimization to reduce the effect of one day exceptions on the runtime
+                                      #  Looks like {(dd,mm,yyyy): name}
 
         self.start_year = start_year
         self.stop_year = stop_year
@@ -35,12 +35,10 @@ class Scheduler(object):
         self.add_rules(rules)
         self.add_exceptions(exceptions)
 
-    
 
     def add_rules(self, rules):
         for rname, rule in rules:
             self.rules[rname].append(self.get_rule(rule))
-
 
 
     def add_exceptions(self, exceptions):
@@ -49,7 +47,7 @@ class Scheduler(object):
             if BasicCronRule.is_holiday(exception):
                 self.holiday_exceptions[BasicCronRule.holiday_tuple(exception)] = ename
             else:
-                self.exceptions[ename].append(self.get_rule(exception))                
+                self.exceptions[ename].append(self.get_rule(exception))
 
 
     def get_rule(self, cron_string):
@@ -60,10 +58,10 @@ class Scheduler(object):
             return BasicCronRule(cron_string, start_year=self.start_year, stop_year=self.stop_year)
 
 
-    def pick_rules(self, time_obj):
+    def get_matching_rules(self, time_obj):
         """
-            Picks the rules that time_obj belongs to.  
-            
+            returns the (names of) rules that time_obj matches.
+
             time_obj is a datetime object.
 
             if self.in_utc is defined, then the time_obj will be converted to UTC
@@ -73,7 +71,6 @@ class Scheduler(object):
                 e.g.
                 [], ["2001"], ["weekday_afternoons", "every_thursday"],
         """
-        
 
         rule_list = []
 

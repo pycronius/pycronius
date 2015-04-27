@@ -2,7 +2,7 @@ import re
 
 from utils import Bunch
 
-
+#TODO: consider adding "* * last 11 4 *" style strings (last thursday of november)
 
 class InvalidFieldError(Exception):
     pass
@@ -16,7 +16,7 @@ class BasicCronRule(object):
     start_year = 2000
     stop_year = 2025
     holiday_re = "[\*]\s[\*]\s(\d{1,2})\s(\d{1,2})\s[\*]\s(\d{4})"
-    
+
     def __init__(self, cron_string, start_year=None, stop_year=None):
         """
             cron_string should look like: "* */6 * * 6-7 2015"
@@ -34,7 +34,7 @@ class BasicCronRule(object):
         """
             Returns a set containing the right elements
             minimum and maximum define the range of values used for wildcards
-            minimum and maximum as passed should be inclusive integers. 
+            minimum and maximum as passed should be inclusive integers.
             All +1s will be added here.
                 e.g. parse_field("0-1", 0, 2) -> set([0,1])
                 e.g. parse_field("*", 0, 1) -> set([0,1])
@@ -78,7 +78,7 @@ class BasicCronRule(object):
                 "dom": cls.parse_field(fields[2], 1, 31),
                 "month": cls.parse_field(fields[3], 1, 12),
                 "dow": cls.parse_field(fields[4], 1, 7),
-                "year": cls.parse_field(fields[5], start_year, stop_year)  #What is a sensible year here?
+                "year": cls.parse_field(fields[5], start_year, stop_year)  # What is a sensible year here?
             }
         except InvalidFieldError as e:
             raise InvalidCronStringError("{}:  ({})".format(cron_string, e.args[0]))
@@ -106,7 +106,7 @@ class BasicCronRule(object):
     @classmethod
     def is_valid(cls, cron_string):
         """
-            Note that this is just a wrapper around parse(), so usually it's faster to just attempt parse, 
+            Note that this is just a wrapper around parse(), so usually it's faster to just attempt parse,
                 and catch the error
         """
         try:
@@ -124,13 +124,13 @@ class BasicCronRule(object):
         #If all checks pass, the time_obj belongs to this ruleset
         if time_obj.year not in self.rulesets["year"]:
             return False
-        
+
         if time_obj.month not in self.rulesets["month"]:
             return False
 
         if time_obj.day not in self.rulesets["dom"]:
             return False
-        
+
         if time_obj.isoweekday() not in self.rulesets["dow"]:
             return False
 
@@ -167,7 +167,7 @@ class CronRangeRule(BasicCronRule):
     @classmethod
     def parse(cls, cron_string, start_year=None, stop_year=None):
         try:
-            
+
             if not cls.looks_like_range_rule(cron_string):
                 raise InvalidCronStringError(cron_string)
 
@@ -196,17 +196,17 @@ class CronRangeRule(BasicCronRule):
 
         if time_obj.year not in self.rulesets["year"]:
             return False
-        
+
         if time_obj.month not in self.rulesets["month"]:
             return False
 
         if time_obj.day not in self.rulesets["dom"]:
             return False
-        
+
         if time_obj.isoweekday() not in self.rulesets["dow"]:
             return False
 
-        #Determine if time_obj is within the time range 
+        #Determine if time_obj is within the time range
         if time_obj.hour < self.rulesets["start"].hour or (time_obj.hour == self.rulesets["start"].hour and time_obj.minute < self.rulesets["start"].minute):
             return False
 
