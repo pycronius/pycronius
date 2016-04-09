@@ -12,7 +12,7 @@ Another perfectly reasonable example is the more traditional crontab, although t
 
 ## Why cron strings?
 
-Because they are compact, simple, and widely used.
+Because they are compact, simple, visually verifiable, and in wide use.
 
 
 ## Alright, cool, now show me some code
@@ -20,7 +20,10 @@ Because they are compact, simple, and widely used.
 ```python
 from pycronius import Scheduler
 
+#Open 7am to 8pm
 rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
+
+#Open 8am to 5pm on weekdays, and closed Christmas and the 7th of April. 
 exceptions = [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
 
 scheduler = Scheduler(rules, exceptions, 2010, 2020)
@@ -30,10 +33,7 @@ print scheduler.get_matching_rules(datetime(2014, 12, 19, 12, 0)) # -> ["open"]
 
 ## CronRange strings
 
-As those familiar with cron strings are already aware, one drawback of cron strings is that they are really
-inconvenient for representing periods that begin or end on anything other than exactly the hour.
-With the standard cron string this requires defining multiple strings to handle on contiguous block of time.
-For example, say our hypothetical business opens at 7:30 and closes at 19:00.  We would need the following strings:
+As those familiar with cron strings know, one drawback of cron strings is that they are inconvenient for representing periods that do not begin or end exactly on the hour. With standard cron strings this requires defining multiple rules to handle non-contiguous blocks of time. For example, say our hypothetical business opens at 7:30 and closes at 19:00.  We would need the following strings:
 * `("closed", "* 0-6 * * * *")`
 * `("closed", "0-30 7 * * * *")`
 * `("open", "30-59 7 * * * *")`
