@@ -23,7 +23,7 @@ from pycronius import Scheduler
 #Open 7am to 8pm
 rules = [("open", "* 7-19 * * * *"), ("closed", "* 0-6 * * * *"), ("closed", "* 20-23 * * * *")]
 
-#Open 8am to 5pm on weekdays, and closed Christmas and the 7th of April. 
+#Open 9am to 5pm on weekdays, and closed Christmas and the 7th of April. 
 exceptions = [("closed", "* 0-8 * * 6-7 *"), ("closed", "* 17-23 * * 6-7 *"), ("closed", "* * 25 12 * *"), ("closed", "* * 4 7 * *")]
 
 scheduler = Scheduler(rules, exceptions, 2010, 2020)
