@@ -33,7 +33,7 @@ print scheduler.get_matching_rules(datetime(2014, 12, 19, 12, 0)) # -> ["open"]
 
 ## CronRange strings
 
-As those familiar with cron strings know, one drawback of cron strings is that they are inconvenient for representing periods that do not begin or end exactly on the hour. With standard cron strings this requires defining multiple rules to handle non-contiguous blocks of time. For example, say our hypothetical business opens at 7:30 and closes at 19:00.  We would need the following strings:
+One drawback of standard cron strings is that they are inconvenient for representing periods that do not begin or end exactly on the hour. With standard cron strings this requires defining multiple rules to handle non-contiguous blocks of time. For example, say our hypothetical business opens at 7:30 and closes at 19:00.  We would need the following strings:
 * `("closed", "* 0-6 * * * *")`
 * `("closed", "0-30 7 * * * *")`
 * `("open", "30-59 7 * * * *")`
